@@ -1,0 +1,29 @@
+name: Build macOS release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Match release tag
+        run: node -e "if('v'+require('./package.json').version!==process.env.GITHUB_REF_NAME)process.exit(1)"
+      - run: npm ci
+      - run: npm test
+      - run: npm run package
+      - run: npm run dist
+      - name: Publish draft for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../SHA256SUMS.txt --draft --title "FormLens $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md

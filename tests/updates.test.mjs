@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import service from '../update-service.cjs';
+const {parseRelease,newer,createUpdateService}=service;
+const release=(v='0.8.0')=>({tag_name:'v'+v,draft:false,prerelease:false,assets:[{name:`FormLens-${v}-arm64.dmg`,browser_download_url:`https://github.com/albret181-stack/FormLens/releases/download/v${v}/FormLens-${v}-arm64.dmg`,state:'uploaded',size:100}]});
+test('versions compare numerically and never downgrade',()=>{assert.ok(newer('0.10.0','0.9.0'));assert.ok(!newer('0.6.0','0.7.0'));assert.ok(!newer('1.0.0-beta','0.7.0'));assert.ok(!newer('0.7.0','0.7.0'))});
+test('release requires exact repository and version-specific asset URL',()=>{assert.equal(parseRelease(release(),'0.7.0').status,'available');const data=release();data.assets[0].browser_download_url='https://evil.example/payload';assert.throws(()=>parseRelease(data,'0.7.0'));assert.throws(()=>parseRelease({...release(),draft:true},'0.7.0'));assert.throws(()=>parseRelease({...release(),prerelease:true},'0.7.0'))});
+test('same or older release is current',()=>{assert.equal(parseRelease(release('0.7.0'),'0.7.0').status,'current');assert.equal(parseRelease(release('0.6.0'),'0.7.0').status,'current')});
+test('single in-flight check and cooldown avoid duplicate requests',async()=>{let count=0;const updater=createUpdateService('0.7.0',{fetcher:async()=>{count++;return new Response(JSON.stringify(release()))}});const [a,b]=await Promise.all([updater.check(),updater.check()]);assert.deepEqual(a,b);assert.equal(a.status,'available');await updater.check();assert.equal(count,1);assert.ok(updater.downloadURL().endsWith('.dmg'))});
+test('network errors and unpublished releases are not reported as up to date',async()=>{for(const [response,expected] of [[new Response('',{status:404}),'unpublished'],[new Response('',{status:403}),'error']]){const updater=createUpdateService('0.7.0',{fetcher:async()=>response});assert.equal((await updater.check()).status,expected);assert.equal(updater.downloadURL(),null)}});
+test('malformed or oversized replies fail closed',async()=>{for(const body of ['not json','x'.repeat(1024*1024+1)]){const updater=createUpdateService('0.7.0',{fetcher:async()=>new Response(body)});assert.equal((await updater.check()).status,'error');assert.equal(updater.downloadURL(),null)}});

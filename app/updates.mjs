@@ -1,0 +1,8 @@
+const button=document.getElementById('updates-open'),dialog=document.getElementById('updates-dialog'),message=document.getElementById('updates-message'),version=document.getElementById('updates-version'),check=document.getElementById('updates-check'),download=document.getElementById('updates-download');
+const api=window.formlensUpdates;
+function render(state){version.textContent=`Установлена: ${state.current||'веб-предпросмотр'}`;message.textContent=state.message;button.classList.toggle('has-update',state.status==='available');button.setAttribute('aria-label',state.status==='available'?'Обновления: доступна новая версия':'Обновления приложения');check.disabled=!api||state.status==='checking';download.hidden=state.status!=='available';download.disabled=false;}
+button.onclick=async()=>{dialog.showModal();if(api){try{render(await api.state())}catch{message.textContent='Не удалось получить состояние обновлений'}}};
+document.getElementById('updates-close').onclick=()=>dialog.close();
+check.onclick=async()=>{check.disabled=true;message.textContent='Проверяю GitHub Releases…';try{render(await api.check())}catch{message.textContent='Проверка не удалась. Попробуйте ещё раз.';check.disabled=false}};
+download.onclick=async()=>{download.disabled=true;try{await api.download();message.textContent='Загрузка открыта в браузере. Завершите работу и сохраните разбор, затем замените FormLens в «Программах» версией из DMG.'}catch{message.textContent='Не удалось открыть загрузку. Повторите проверку.'}finally{download.disabled=false}};
+if(api){api.onState(render);api.state().then(render).catch(()=>{})}else render({status:'web',message:'Обновления доступны в установленном приложении для macOS. Этот экран — веб-предпросмотр.'});

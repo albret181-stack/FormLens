@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+app/test-pose.jpg
+app/selftest.html
+app/selftest.mjs
+*.log
+*.p12
+*.mobileprovision
+.env
+.env.*
