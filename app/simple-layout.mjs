@@ -11,12 +11,16 @@ setup.querySelector('label[for="machine"]').textContent='Упражнение';
 $('upload').textContent='Загрузить видео';$('analyze').textContent='Разобрать видео';
 const guide=document.createElement('p');guide.className='simple-guide';guide.textContent='Снимайте сбоку: один человек, неподвижная камера, суставы видны. До 60 секунд.';setup.insertBefore(guide,setup.querySelector('.check'));
 const options=makeDetails('Сохранить или экспортировать разбор','result-options');
-options.append(document.querySelector('.project-bar'),document.querySelector('.notes-panel'));
+options.append(document.querySelector('.project-bar'));
+// Keep legacy note fields for opening saved projects, outside the visible review flow.
+document.querySelector('.notes-panel').hidden=true;
+document.querySelector('.comparison').hidden=true;
 const actions=document.createElement('div');actions.className='extra-actions';
-for(const id of ['html-report','export','pin','save-frame'])actions.append($(id));options.append(actions);document.querySelector('.work-area').append(options);
+for(const id of ['html-report','export','save-frame'])actions.append($(id));options.append(actions);document.querySelector('.work-area').append(options);$('pin').hidden=true;
 document.querySelector('.work-area').prepend(document.querySelector('.work-footer'));
 setup.after($('banner'));
-document.querySelector('.findings h2').textContent='Что стоит исправить';document.querySelector('.viewer h2').textContent='Ваше видео';document.querySelector('.comparison h2').textContent='Посмотрите на разницу';
+document.querySelector('.findings h2').textContent='Моменты для проверки';document.querySelector('.viewer h2').textContent='Ваше видео';document.querySelector('.comparison h2').textContent='Посмотрите на разницу';
 $('new-session').textContent='Другое видео';
 // Upload remains the only primary action before a file is selected.
 for(const name of ['dragover','drop'])setup.addEventListener(name,event=>{event.preventDefault();if(name==='drop')$('stage').dispatchEvent(new DragEvent('drop',{dataTransfer:event.dataTransfer}))});
+
