@@ -1,10 +1,9 @@
 {
-  "version": "0.9.2",
-  "runId": 40878463530,
+  "version": "0.9.3",
+  "runId": 40944333218,
   "artifactName": "FormLens-production-update",
-  "zipSha256": "b72b5db896413b431c3f4db9deb9e540e275c3216df4486d1bd1389cd70ff42c",
-  "zipSize": 177710358,
-  "signature": "VH1kzOFAEUWepYP9O+MWbtClAZ3YO9mVZmup8tM1hUdRf5rUjI+fLBWKFfruRXZea0H4LlaKe0nxXq7V1njCDw==",
-  "feedSha256": "8e84fca029d32962fd5dcf977dedabdb16be81f8f9e661fbbfae227e47e30e12",
-  "verificationRevision": 2
+  "zipSha256": "c2b636c61e7970982f65ac3cb5113386d296502f5346ad70f1d6b5b60a5913c4",
+  "zipSize": 177715454,
+  "signature": "+nO7uycu25CxgNX5Lkiihnau/hqv3I78mDM9n1kZ03m8g0SsGo8LZxAAx4afAmeo6UR6iafLQhxelE7WS+eJDQ==",
+  "feedSha256": "152ae4afc2fa46607c864290f0473322423645391a4bd68c26fe4f903422b757"
 }
