@@ -12,7 +12,8 @@ const run=(command,args,options={})=>execFileSync(command,args,{stdio:'inherit',
 const text=(command,args)=>execFileSync(command,args,{encoding:'utf8',timeout:30000}).trim();
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 await mkdir(mount,{recursive:true});await mkdir(path.dirname(bundle),{recursive:true});
-run('gh',['run','download',String(fromRun),'--repo','albret181-stack/FormLens','--name',`FormLens-${fromVersion}-arm64-installer`,'--dir',path.join(root,'old')]);
+if(fromVersion==='0.9.0')run('gh',['run','download',String(fromRun),'--repo','albret181-stack/FormLens','--name',`FormLens-${fromVersion}-arm64-installer`,'--dir',path.join(root,'old')]);
+else run('gh',['release','download',`v${fromVersion}`,'--repo','albret181-stack/FormLens','--pattern',`FormLens-${fromVersion}-arm64.dmg`,'--dir',path.join(root,'old')]);
 run('hdiutil',['attach',path.join(root,'old',`FormLens-${fromVersion}-arm64.dmg`),'-readonly','-nobrowse','-mountpoint',mount]);
 run('ditto',[path.join(mount,'FormLens.app'),bundle]);run('hdiutil',['detach',mount]);
 const plist=path.join(bundle,'Contents','Info.plist'),binary=path.join(bundle,'Contents','MacOS','FormLens');
