@@ -6,7 +6,7 @@ import {makeSparkleFeed,verifyArchive} from './update-feed.mjs';
 const {version}=JSON.parse(await readFile('package.json','utf8'));
 const app=path.resolve('../build/FormLens-darwin-arm64/FormLens.app');
 const run=(cmd,args)=>execFileSync(cmd,args,{stdio:'inherit'});
-const publicKey=process.env.FORMLENS_UPDATE_PUBLIC_KEY,privateKey=process.env.FORMLENS_UPDATE_PRIVATE_KEY;
+const publicKey=process.env.FORMLENS_UPDATE_PUBLIC_KEY||(await readFile('config/update-public-key.txt','utf8')).trim(),privateKey=process.env.FORMLENS_UPDATE_PRIVATE_KEY?.trim();
 if(!/^[A-Za-z0-9+/]{43}=$/.test(publicKey||'')||!/^[A-Za-z0-9+/]{43}=$/.test(privateKey||''))throw Error('Настройте бесплатную пару ключей FORMLENS_UPDATE_PUBLIC_KEY / FORMLENS_UPDATE_PRIVATE_KEY.');
 // Local ad-hoc code signature is free. Authenticity of updates comes from Ed25519.
 run('codesign',['--force','--deep','--sign','-',app]);run('codesign',['--verify','--deep','--strict',app]);

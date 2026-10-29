@@ -1,0 +1,32 @@
+name: macOS Sparkle build check
+on:
+  push:
+    branches: ['feat/native-macos-updates']
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'sparkle-updater.cjs'
+      - '.github/workflows/macos-build-check.yml'
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Create disposable test keys (never production keys)
+        run: node scripts/ci-test-update-keys.mjs
+      - run: npm ci
+      - run: npm test
+      - run: npm run package
+      - run: npm run dist
+      - name: Verify bundled Sparkle can launch
+        run: node scripts/verify-sparkle-bundle.mjs
+      - name: Check embedded public key
+        run: |
+          node -e "const cp=require('node:child_process');const key=cp.execFileSync('/usr/libexec/PlistBuddy',['-c','Print :SUPublicEDKey','../build/FormLens-darwin-arm64/FormLens.app/Contents/Info.plist'],{encoding:'utf8'}).trim();if(key!==process.env.FORMLENS_UPDATE_PUBLIC_KEY)throw Error('wrong embedded key')"

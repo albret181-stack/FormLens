@@ -10,8 +10,6 @@ concurrency:
 jobs:
   macos:
     runs-on: macos-14
-    env:
-      FORMLENS_UPDATE_PUBLIC_KEY: ${{ vars.FORMLENS_UPDATE_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
