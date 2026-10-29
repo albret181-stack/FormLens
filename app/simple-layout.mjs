@@ -5,11 +5,11 @@ document.body.classList.add('simple-ui');
 const settings=makeDetails('Ещё','app-options');
 for(const el of [document.querySelector('.theme-picker'),$('library-open'),$('updates-open')])settings.append(el);
 document.querySelector('.appbar').append(settings);
-const title=document.querySelector('.title-row');title.querySelector('h1').textContent='Проверьте технику по видео';title.querySelector('p').textContent='Загрузите подход — получите замечания с объяснением и отметками на ваших кадрах.';
+const title=document.querySelector('.title-row');title.querySelector('h1').textContent='Проверьте технику по видео';title.querySelector('p').textContent='Ключевые кадры, фазы движения и моменты для проверки корпуса.';
 const setup=document.querySelector('.setup');
 setup.querySelector('label[for="machine"]').textContent='Упражнение';
 $('upload').textContent='Загрузить видео';$('analyze').textContent='Повторить разбор';document.querySelector('.setup .check').hidden=true;
-const guide=document.createElement('p');guide.className='simple-guide';guide.textContent='Для руки нужны плечо, локоть и кисть; для корпуса — ещё таз. Снимайте сбоку, держите камеру неподвижно. До 60 секунд. Разбор начнётся автоматически.';setup.insertBefore(guide,setup.querySelector('.check'));
+const guide=document.createElement('p');guide.className='simple-guide';guide.textContent='Для руки нужны плечо, локоть и кисть; для корпуса — ещё таз. Снимайте сбоку, держите камеру неподвижно. До 60 секунд. Разбор кадров начнётся автоматически.';setup.insertBefore(guide,setup.querySelector('.check'));
 const options=makeDetails('Сохранить или экспортировать разбор','result-options');
 options.append(document.querySelector('.project-bar'));
 // Keep legacy note fields for opening saved projects, outside the visible review flow.
@@ -23,4 +23,5 @@ document.querySelector('.findings h2').textContent='Разбор видео';doc
 $('new-session').textContent='Другое видео';
 // Upload remains the only primary action before a file is selected.
 for(const name of ['dragover','drop'])setup.addEventListener(name,event=>{event.preventDefault();if(name==='drop')$('stage').dispatchEvent(new DragEvent('drop',{dataTransfer:event.dataTransfer}))});
+
 

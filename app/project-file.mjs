@@ -21,6 +21,8 @@ export function validateMetadata(p){
   if(s.torsoValid!==undefined)check(typeof s.torsoValid==='boolean'&&(s.torsoValid?number(s.trunk,-180,180):s.trunk==null));
   if(s.valid)check(number(s.elbow,0,180)&&number(s.q,0,1)&&(s.torsoValid===false?s.trunk==null:number(s.trunk,-180,180)));
   if(s.valid||s.torsoValid){check(Array.isArray(s.ids)&&s.ids.length===5&&s.ids.every(i=>Number.isInteger(i)&&i>=0&&i<33));check(Array.isArray(s.landmarks)&&s.landmarks.length===33&&s.landmarks.every(v=>v&&number(v.x,-10,10)&&number(v.y,-10,10)&&number(v.visibility,0,1)))}
+  if(s.recovery!=null)check(['image','crop'].includes(s.recovery));
+  if(s.landmarks!=null)check(Array.isArray(s.landmarks)&&s.landmarks.length===33&&s.landmarks.every(v=>v&&number(v.x,-10,10)&&number(v.y,-10,10)&&number(v.visibility,0,1)));
   if(!s.valid)check(text(s.reason||'',500));if(s.torsoReason!=null)check(text(s.torsoReason,500));
  }
  if(p.report!==null){const r=p.report;check(r&&number(r.coverage,0,1)&&text(r.status,200)&&Array.isArray(r.reps)&&r.reps.length<=120&&Array.isArray(r.events)&&r.events.length<=1000);let lastEnd=-1;
@@ -53,3 +55,4 @@ export async function importProjectFile(file,{signal,onProgress=()=>{}}={}){
  aborted(signal);const filename=p.filename.split(/[\\/]/).at(-1)||'video.mp4';
  return {...p,id:crypto.randomUUID(),title:(p.title+' — импорт').slice(0,100),filename,video,updatedAt:Date.now(),imported:true};
 }
+
