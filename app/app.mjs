@@ -1,4 +1,5 @@
 import './simple-layout.mjs';
+import {prepareUpdate} from './update-preparation.mjs';
 import {eventAt,eventWindow,reviewRate} from './review.mjs';
 import {exportProjectFile,importProjectFile} from './project-file.mjs';
 import {PoseClient} from './pose-client.mjs';
@@ -151,3 +152,12 @@ $('project-export').onclick=async()=>{if(!currentFile||isDemo||busy||uiBusy)retu
 $('project-import').onclick=()=>$('project-input').click();
 $('project-input').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file||busy||uiBusy)return;uiBusy=true;transferController=new AbortController();controls();$('import-status').textContent='Проверяю файл…';try{const project=await importProjectFile(file,{signal:transferController.signal,onProgress:p=>$('import-status').textContent=`Проверка целостности: ${Math.round(p*100)}%`});if(transferController.signal.aborted)throw new DOMException('Отменено','AbortError');await saveProject(project);$('import-status').textContent='Импортирована отдельная копия. Откройте её из списка; результаты анализа повторно не проверялись.';await renderLibrary()}catch(error){$('import-status').textContent=error.name==='AbortError'?'Импорт отменён. Текущие проекты не изменены.':error.message}finally{transferController=null;uiBusy=false;controls()}};
 
+
+// Installation is offered only after analysis/transfers finish and IndexedDB commits.
+window.formlensPrepareUpdate=()=>prepareUpdate({
+ isBusy:()=>busy||uiBusy||!!transferController,
+ pause:()=>{video.pause();demoPlaying=false},
+ lock:()=>{uiBusy=true;controls()},
+ persist:async()=>{if(currentFile&&!isDemo&&dirty){const id=projectId||crypto.randomUUID();await saveProject(projectSnapshot(id));projectId=id;dirty=false;$('save-status').textContent='Сохранено перед обновлением'}},
+ unlock:()=>{uiBusy=false;controls()}
+});
