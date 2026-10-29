@@ -1,0 +1,24 @@
+// Offline publisher: private key is read locally and never written to repository output.
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {createPrivateKey,createPublicKey,createHash,sign,verify} from 'node:crypto';
+import path from 'node:path';
+import {makeSparkleFeed} from './update-feed.mjs';
+const [archive,keyFile,runText]=process.argv.slice(2);
+if(!archive||!keyFile||!/^\d+$/.test(runText||''))throw Error('Usage: node scripts/sign-prepared-update.mjs ARCHIVE PRIVATE_KEY_FILE PREPARE_RUN_ID');
+const {version}=JSON.parse(await readFile('package.json','utf8'));
+if(path.basename(archive)!==`FormLens-${version}-arm64.zip`)throw Error('Wrong archive version');
+const publicKey=(await readFile('config/update-public-key.txt','utf8')).trim();
+const secret=(await readFile(keyFile,'utf8')).trim();
+if(!/^[A-Za-z0-9+/]{43}=$/.test(secret))throw Error('Invalid signing key format');
+const key=createPrivateKey({format:'der',type:'pkcs8',key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),Buffer.from(secret,'base64')])});
+const derived=createPublicKey(key).export({type:'spki',format:'der'}).subarray(-32).toString('base64');
+if(derived!==publicKey)throw Error('Signing key does not match the installed application');
+const bytes=await readFile(archive),signature=sign(null,bytes,key).toString('base64');
+if(!verify(null,bytes,createPublicKey(key),Buffer.from(signature,'base64')))throw Error('Signature verification failed');
+const content=Buffer.from(makeSparkleFeed({version,size:bytes.length,signature}));
+const feed=Buffer.concat([content,Buffer.from(`<!-- sparkle-signatures:\nedSignature: ${sign(null,content,key).toString('base64')}\nlength: ${content.length}\n-->\n`)]);
+const sha=b=>createHash('sha256').update(b).digest('hex');
+await mkdir('releases',{recursive:true});
+await writeFile(`releases/FormLens-${version}-arm64-appcast.xml`,feed);
+await writeFile('config/prepared-release.json',JSON.stringify({version,runId:Number(runText),artifactName:'FormLens-production-update',zipSha256:sha(bytes),zipSize:bytes.length,signature,feedSha256:sha(feed)},null,2)+'\n');
+console.log(`Prepared public signatures for FormLens ${version}; private key was not exported.`);
