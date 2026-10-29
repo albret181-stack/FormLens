@@ -4,7 +4,7 @@ const path=require('node:path');
 const BASE='https://github.com/albret181-stack/FormLens/releases/download/';
 /** Uses Sparkle's official CLI. No shell, privilege bypass or custom file replacement. */
 class SparkleUpdater extends EventEmitter {
- constructor({bundle,resources,spawnProcess=spawn}){super();this.bundle=bundle;this.binary=path.join(resources,'updater','bin','sparkle');this.spawnProcess=spawnProcess;this.child=null;this.feed=null;}
+ constructor({bundle,resources,spawnProcess=spawn}){super();this.bundle=bundle;this.binary=path.join(resources,'updater','sparkle.app','Contents','MacOS','sparkle');this.spawnProcess=spawnProcess;this.child=null;this.feed=null;}
  setFeedURL({url}){
   const match=/^https:\/\/github\.com\/albret181-stack\/FormLens\/releases\/download\/v(\d+\.\d+\.\d+)\/FormLens-\1-arm64-appcast\.xml$/.exec(url||'');
   if(!match||!url.startsWith(BASE))throw Error('Недопустимый источник обновления');

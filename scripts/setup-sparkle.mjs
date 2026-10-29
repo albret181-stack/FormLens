@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {mkdir,readFile,writeFile,stat} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,stat,cp} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 export const SPARKLE_VERSION='2.10.1';
@@ -15,6 +15,14 @@ export async function prepareSparkle(){
  if(createHash('sha256').update(bytes).digest('hex')!==SHA)throw Error('Контрольная сумма Sparkle не совпала');
  await writeFile(archive,bytes);await mkdir(root,{recursive:true});
  execFileSync('tar',['-xJf',archive,'-C',root],{stdio:'pipe'});
- for(const file of ['bin/sparkle','bin/sign_update','bin/generate_keys','Sparkle.framework'])await stat(path.join(root,file));
+ for(const file of ['bin/sign_update','bin/generate_keys','Sparkle.framework'])await stat(path.join(root,file));
+ // Sparkle distributes its framework/signing tools, but not the optional CLI app.
+ const source=path.resolve('../build/sparkle-source'),derived=path.resolve('../build/sparkle-cli-build');
+ try{await stat(path.join(source,'.git'))}catch{execFileSync('git',['clone','--no-checkout','https://github.com/sparkle-project/Sparkle.git',source],{stdio:'inherit'})}
+ execFileSync('git',['-C',source,'checkout','--detach','ab7d71291238df6e0492143b120c9b696a35f603'],{stdio:'inherit'});
+ execFileSync('git',['-C',source,'submodule','update','--init','--recursive'],{stdio:'inherit'});
+ execFileSync('xcodebuild',['-project',path.join(source,'Sparkle.xcodeproj'),'-scheme','sparkle-cli','-configuration','Release','-derivedDataPath',derived,'-quiet','build','CODE_SIGNING_ALLOWED=NO','ARCHS=arm64','ONLY_ACTIVE_ARCH=YES'],{stdio:'inherit'});
+ await cp(path.join(derived,'Build','Products','Release','sparkle.app'),path.join(root,'sparkle.app'),{recursive:true});
+ await stat(path.join(root,'sparkle.app','Contents','MacOS','sparkle'));
  return root;
 }

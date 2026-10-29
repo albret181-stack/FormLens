@@ -7,7 +7,7 @@ const {SparkleUpdater}=require('./sparkle-updater.cjs');
 let updates;
 function supportsNativeUpdates(){
  if(!app.isPackaged||process.platform!=='darwin'||process.arch!=='arm64')return false;
- if(!existsSync(path.join(process.resourcesPath,'updater','bin','sparkle')))return false;
+ if(!existsSync(path.join(process.resourcesPath,'updater','sparkle.app','Contents','MacOS','sparkle')))return false;
  try{const info=path.join(process.resourcesPath,'..','Info.plist');const key=execFileSync('/usr/libexec/PlistBuddy',['-c','Print :SUPublicEDKey',info],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();return /^[A-Za-z0-9+/]{43}=$/.test(key)}catch{return false}
 }
 const {start}=require('./server.cjs');let server,win;
