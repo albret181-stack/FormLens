@@ -22,7 +22,7 @@ export async function prepareSparkle(){
  execFileSync('git',['-C',source,'checkout','--detach','ab7d71291238df6e0492143b120c9b696a35f603'],{stdio:'inherit'});
  execFileSync('git',['-C',source,'submodule','update','--init','--recursive'],{stdio:'inherit'});
  execFileSync('xcodebuild',['-project',path.join(source,'Sparkle.xcodeproj'),'-scheme','sparkle-cli','-configuration','Release','-derivedDataPath',derived,'-quiet','build','CODE_SIGNING_ALLOWED=NO','ARCHS=arm64','ONLY_ACTIVE_ARCH=YES'],{stdio:'inherit'});
- await cp(path.join(derived,'Build','Products','Release','sparkle.app'),path.join(root,'sparkle.app'),{recursive:true});
+ await cp(path.join(derived,'Build','Products','Release','sparkle.app'),path.join(root,'sparkle.app'),{recursive:true,verbatimSymlinks:true});
  await stat(path.join(root,'sparkle.app','Contents','MacOS','sparkle'));
  return root;
 }

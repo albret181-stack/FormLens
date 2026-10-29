@@ -3,7 +3,7 @@ import path from 'node:path';
 import {readdir,readFile} from 'node:fs/promises';
 const cacheRoot=path.resolve('../../work/electron-cache');
 let electronZipDir;
-try {const files=await readdir(cacheRoot,{recursive:true});const zip=files.find(f=>f.endsWith('electron-v45.0.0-darwin-arm64.zip'));if(zip)electronZipDir=path.dirname(path.join(cacheRoot,zip))} catch {}
+try {const files=await readdir(cacheRoot,{recursive:true,verbatimSymlinks:true});const zip=files.find(f=>f.endsWith('electron-v45.0.0-darwin-arm64.zip'));if(zip)electronZipDir=path.dirname(path.join(cacheRoot,zip))} catch {}
 const publicKey=process.env.FORMLENS_UPDATE_PUBLIC_KEY||(await readFile('config/update-public-key.txt','utf8')).trim();
 if(!/^[A-Za-z0-9+/]{43}=$/.test(publicKey||''))throw Error('Настройте бесплатный публичный ключ FORMLENS_UPDATE_PUBLIC_KEY.');
 const {prepareSparkle}=await import('./setup-sparkle.mjs');
@@ -12,4 +12,4 @@ const outputs=await packager({extendInfo:{SUPublicEDKey:publicKey,SUVerifyUpdate
 
 
 const {cp}=await import('node:fs/promises');
-for(const output of outputs)await cp(sparkle,path.join(output,'FormLens.app','Contents','Resources','updater'),{recursive:true});
+for(const output of outputs)await cp(sparkle,path.join(output,'FormLens.app','Contents','Resources','updater'),{recursive:true,verbatimSymlinks:true});
