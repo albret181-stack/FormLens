@@ -23,3 +23,14 @@
 .simple-ui .scope p{font-size:12px}
 .simple-ui .framebadge{max-width:calc(100% - 24px);box-sizing:border-box;font-size:11px;line-height:1.4}
 @media(max-width:760px){.simple-ui .analysis-layout{grid-template-columns:1fr}.simple-ui .stage{height:clamp(240px,48vh,400px)}.simple-ui .review-controls{font-size:11px}.simple-ui .transport{gap:7px}.simple-ui .transport span{font-size:10px}}
+
+/* Upload starts analysis; its progress and results stay directly below the video. */
+.simple-ui .analysis-layout{grid-template-columns:minmax(0,1fr)}
+.simple-ui.has-video .findings{display:block}
+.simple-ui .setup .check{display:none}
+.simple-ui.has-video .simple-guide{display:block;grid-column:1/-1}
+.simple-ui .findings .work-footer{padding:0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.simple-ui .findings #progress{flex:1;min-width:180px;font-size:14px;line-height:1.5}
+.simple-ui .findings[aria-busy="true"]{border-color:var(--theme-accent)}
+.simple-ui #events{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.simple-ui #events>.placeholder{grid-column:1/-1;padding:24px 8px}
