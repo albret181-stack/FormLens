@@ -11,9 +11,7 @@ jobs:
   macos:
     runs-on: macos-14
     env:
-      FORMLENS_REQUIRE_SIGNED_RELEASE: '1'
-      FORMLENS_SIGN_IDENTITY: ${{ secrets.FORMLENS_SIGN_IDENTITY }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      FORMLENS_UPDATE_PUBLIC_KEY: ${{ vars.FORMLENS_UPDATE_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,18 +20,12 @@ jobs:
           cache: npm
       - name: Match release tag
         run: node -e "if('v'+require('./package.json').version!==process.env.GITHUB_REF_NAME)process.exit(1)"
-      - name: Import Developer ID certificate
-        env:
-          FORMLENS_CERTIFICATE_P12: ${{ secrets.FORMLENS_CERTIFICATE_P12 }}
-          FORMLENS_CERTIFICATE_PASSWORD: ${{ secrets.FORMLENS_CERTIFICATE_PASSWORD }}
-        run: node .github/scripts/import-signing.cjs
       - run: npm ci
       - run: npm test
       - run: npm run package
-      - name: Notarize and build DMG, ZIP and update feed
+      - name: Build free Sparkle DMG, ZIP and signed appcast
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          FORMLENS_UPDATE_PRIVATE_KEY: ${{ secrets.FORMLENS_UPDATE_PRIVATE_KEY }}
         run: npm run dist
       - name: Publish draft for review
         env:
@@ -41,13 +33,7 @@ jobs:
         run: |
           if gh release view "$GITHUB_REF_NAME" --json isDraft > release-state.json 2>/dev/null; then
             node -e "if(!require('./release-state.json').isDraft)throw Error('Refusing to replace a published release')"
-            gh release upload "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../FormLens-*-arm64.zip ../FormLens-*-arm64-update.json ../SHA256SUMS.txt --clobber
+            gh release upload "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../FormLens-*-arm64.zip ../FormLens-*-arm64-appcast.xml ../appcast.xml ../SHA256SUMS.txt --clobber
           else
-            gh release create "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../FormLens-*-arm64.zip ../FormLens-*-arm64-update.json ../SHA256SUMS.txt --draft --title "FormLens $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
-          fi
-      - name: Remove temporary signing keychain
-        if: always()
-        run: |
-          if [ -n "$FORMLENS_SIGN_KEYCHAIN" ]; then
-            security delete-keychain "$FORMLENS_SIGN_KEYCHAIN"
+            gh release create "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../FormLens-*-arm64.zip ../FormLens-*-arm64-appcast.xml ../appcast.xml ../SHA256SUMS.txt --draft --title "FormLens $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
           fi

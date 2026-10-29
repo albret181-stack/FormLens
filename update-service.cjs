@@ -9,7 +9,7 @@ function parseRelease(data,current){
  const asset=Array.isArray(data.assets)?data.assets.find(a=>a.name===`FormLens-${latest}-arm64.dmg`&&a.browser_download_url===expected&&a.state==='uploaded'&&Number.isSafeInteger(a.size)&&a.size>0):null;
  if(newer(latest,current)&&!asset)throw Error('Новая версия ещё не готова к загрузке. Повторите проверку позже.');
  const assetNamed=(name)=>Array.isArray(data.assets)&&data.assets.find(a=>a.name===name&&a.browser_download_url===`${RELEASES}/download/v${latest}/${name}`&&a.state==='uploaded'&&Number.isSafeInteger(a.size)&&a.size>0);
- const zip=assetNamed(`FormLens-${latest}-arm64.zip`),feed=assetNamed(`FormLens-${latest}-arm64-update.json`);
+ const zip=assetNamed(`FormLens-${latest}-arm64.zip`),feed=assetNamed(`FormLens-${latest}-arm64-appcast.xml`);
  return {nativeFeed:zip&&feed?feed.browser_download_url:null,status:newer(latest,current)?'available':'current',current,latest,download:asset?expected:null,release:`${RELEASES}/tag/v${latest}`,message:newer(latest,current)?`Доступна FormLens ${latest}`:'У вас актуальная версия'};
 }
 function createUpdateService(current,{fetcher=fetch,now=Date.now}={}){
