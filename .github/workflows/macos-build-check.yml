@@ -7,11 +7,14 @@ on:
       - 'scripts/**'
       - 'sparkle-updater.cjs'
       - '.github/workflows/macos-build-check.yml'
+concurrency:
+  group: macos-check-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   package:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -30,3 +33,28 @@ jobs:
       - name: Check embedded public key
         run: |
           node -e "const cp=require('node:child_process');const key=cp.execFileSync('/usr/libexec/PlistBuddy',['-c','Print :SUPublicEDKey','../build/FormLens-darwin-arm64/FormLens.app/Contents/Info.plist'],{encoding:'utf8'}).trim();if(key!==process.env.FORMLENS_UPDATE_PUBLIC_KEY)throw Error('wrong embedded key')"
+
+  installer:
+    name: Build FormLens 0.9 installer
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package
+      - run: npm run dist:initial
+      - name: Verify bundled updater launches
+        run: node scripts/verify-sparkle-bundle.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FormLens-0.9.0-arm64-installer
+          path: |
+            ../FormLens-0.9.0-arm64.dmg
+            ../SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
