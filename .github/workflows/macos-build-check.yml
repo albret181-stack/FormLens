@@ -2,11 +2,6 @@ name: macOS Sparkle build check
 on:
   push:
     branches: ['feat/native-macos-updates']
-  pull_request:
-    paths:
-      - 'scripts/**'
-      - 'sparkle-updater.cjs'
-      - '.github/workflows/macos-build-check.yml'
 concurrency:
   group: macos-check-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
@@ -50,11 +45,13 @@ jobs:
       - run: npm run dist:initial
       - name: Verify bundled updater launches
         run: node scripts/verify-sparkle-bundle.mjs
+      - name: Stage installer files
+        run: |
+          mkdir -p release-artifacts
+          cp ../FormLens-0.9.0-arm64.dmg ../SHA256SUMS.txt release-artifacts/
       - uses: actions/upload-artifact@v4
         with:
           name: FormLens-0.9.0-arm64-installer
-          path: |
-            ../FormLens-0.9.0-arm64.dmg
-            ../SHA256SUMS.txt
+          path: release-artifacts/
           if-no-files-found: error
           retention-days: 30
