@@ -104,6 +104,6 @@ export function analyze(samples){
  const low=longest?quantile(longest,.2):null,high=longest?quantile(longest,.8):null;
  const torsoMotion=longest?{min:low.trunk,max:high.trunk,range:high.trunk-low.trunk,t:high.t,reference:low.t,start:longest[0].t,end:longest.at(-1).t}:null;
  const bodyReps=reps.filter(r=>r.torsoEvaluated).length;
- const status=!reps.length?'Недостаточно данных':events.some(e=>e.type==='swing')?'Есть моменты для проверки':bodyReps<reps.length||coverage<.8?'Частичный разбор движения рук':'Срабатываний правила нет';
+ const status=!reps.length?(armMotion||torsoMotion?'Частичный разбор без полных циклов':'Недостаточно данных'):events.some(e=>e.type==='swing')?'Есть моменты для проверки':bodyReps<reps.length||coverage<.8?'Частичный разбор движения рук':'Срабатываний правила нет';
  return {reps,events,coverage,torsoCoverage,status,samples:samples.length,valid,torsoFrames,armMotion,torsoMotion,limitations:[...reasons.values()].map(({names,...entry})=>({...entry,...(names?{reason:'В отдельных кадрах не распознаны уверенно: '+[...names].join(', ')}:{})})).sort((a,b)=>b.frames-a.frames),measurementVersion:2};
 }
