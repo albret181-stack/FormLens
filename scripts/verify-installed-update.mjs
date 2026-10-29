@@ -3,18 +3,21 @@ import {execFileSync,spawn} from 'node:child_process';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 const version=JSON.parse(await readFile('config/prepared-release.json','utf8')).version;
+const baseline=JSON.parse(await readFile('config/update-request.json','utf8'));
+const fromVersion=baseline.fromVersion||'0.9.0',fromRun=baseline.fromRun||40850515890;
+if(!/^\d+\.\d+\.\d+$/.test(fromVersion)||!Number.isSafeInteger(fromRun))throw Error('Invalid baseline');
 const bell=process.argv.includes('--bell');
 const root=path.join(process.env.RUNNER_TEMP,'formlens-native-check'+(bell?'-bell':'')),mount=path.join(root,'volume'),bundle=path.join(root,'installed','FormLens.app');
 const run=(command,args,options={})=>execFileSync(command,args,{stdio:'inherit',timeout:180000,...options});
 const text=(command,args)=>execFileSync(command,args,{encoding:'utf8',timeout:30000}).trim();
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 await mkdir(mount,{recursive:true});await mkdir(path.dirname(bundle),{recursive:true});
-run('gh',['run','download','40850515890','--repo','albret181-stack/FormLens','--name','FormLens-0.9.0-arm64-installer','--dir',path.join(root,'old')]);
-run('hdiutil',['attach',path.join(root,'old','FormLens-0.9.0-arm64.dmg'),'-readonly','-nobrowse','-mountpoint',mount]);
+run('gh',['run','download',String(fromRun),'--repo','albret181-stack/FormLens','--name',`FormLens-${fromVersion}-arm64-installer`,'--dir',path.join(root,'old')]);
+run('hdiutil',['attach',path.join(root,'old',`FormLens-${fromVersion}-arm64.dmg`),'-readonly','-nobrowse','-mountpoint',mount]);
 run('ditto',[path.join(mount,'FormLens.app'),bundle]);run('hdiutil',['detach',mount]);
 const plist=path.join(bundle,'Contents','Info.plist'),binary=path.join(bundle,'Contents','MacOS','FormLens');
 const installedVersion=()=>text('/usr/libexec/PlistBuddy',['-c','Print :CFBundleShortVersionString',plist]);
-if(installedVersion()!=='0.9.0')throw Error('Wrong baseline app');
+if(installedVersion()!==fromVersion)throw Error('Wrong baseline app');
 const start=()=>spawn(binary,['--remote-debugging-port=9333'],{stdio:'ignore',detached:true}).unref();
 async function until(check,label,timeout=90000){const end=Date.now()+timeout;while(Date.now()<end){try{const result=await check();if(result)return result}catch{}await delay(1000)}throw Error('Timed out: '+label)}
 async function target(){return until(async()=>{const response=await fetch('http://127.0.0.1:9333/json/list',{signal:AbortSignal.timeout(2000)});return (await response.json()).find(t=>t.type==='page'&&t.url.startsWith('http://127.0.0.1:4175/'))},'application DevTools')}
@@ -32,11 +35,11 @@ if(bell){
  if(!enabled)throw Error('Bell does not enable native download');
  await evaluate("document.getElementById('updates-download').click();true");
  await until(async()=>(await evaluate('window.formlensUpdates.state()')).status==='ready','bell download and signature verification',180000);
- if(installedVersion()!=='0.9.0')throw Error('App was replaced before explicit installation');
+ if(installedVersion()!==fromVersion)throw Error('App was replaced before explicit installation');
  await evaluate("document.getElementById('updates-install').click();true");
 }else{
  run(cli,[bundle,'--feed-url',feed,'--check-immediately','--defer-install','--user-agent-name','FormLens-CI']);
- if(installedVersion()!=='0.9.0')throw Error('App was replaced before explicit installation');
+ if(installedVersion()!==fromVersion)throw Error('App was replaced before explicit installation');
  await evaluate('window.formlensPrepareUpdate().then(()=>true)');
  run(cli,[bundle,'--feed-url',feed,'--check-immediately','--interactive','--user-agent-name','FormLens-CI']);
 }
@@ -52,5 +55,5 @@ if(!retained)throw Error('Application storage was not retained');
 run('codesign',['--verify','--deep','--strict',bundle]);
 run('osascript',['-e','tell application id "local.formlens.studio" to quit']);
 await mkdir('evidence',{recursive:true});
-await writeFile('evidence/native-update'+(bell?'-bell':'-cli')+'.json',JSON.stringify({from:'0.9.0',to:version,throughBell:bell,archiveAndFeedVerifiedBySparkle:true,deferredUntilInstall:true,applicationReplaced:true,automaticallyRelaunched:true,localStoragePreserved:true,savedProjectAndVideoBlobPreserved:true,gatekeeperQuarantineTested:false},null,2)+'\n');
+await writeFile('evidence/native-update'+(bell?'-bell':'-cli')+'.json',JSON.stringify({from:fromVersion,to:version,throughBell:bell,archiveAndFeedVerifiedBySparkle:true,deferredUntilInstall:true,applicationReplaced:true,automaticallyRelaunched:true,localStoragePreserved:true,savedProjectAndVideoBlobPreserved:true,gatekeeperQuarantineTested:false},null,2)+'\n');
 console.log('Native update, relaunch and stored project retention verified');

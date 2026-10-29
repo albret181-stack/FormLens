@@ -18,11 +18,14 @@ export function validateMetadata(p){
  check(Array.isArray(p.samples)&&p.samples.length<=3600);
  let last=-1;
  for(const s of p.samples){check(number(s.t,0,p.duration)&&s.t>last&&typeof s.valid==='boolean');last=s.t;
-  if(s.valid){check(number(s.elbow,0,180)&&number(s.trunk,-180,180)&&number(s.q,0,1));check(Array.isArray(s.ids)&&s.ids.length===5&&s.ids.every(i=>Number.isInteger(i)&&i>=0&&i<33));check(Array.isArray(s.landmarks)&&s.landmarks.length===33&&s.landmarks.every(v=>v&&number(v.x,-10,10)&&number(v.y,-10,10)&&number(v.visibility,0,1)))}
-  else check(text(s.reason||'',500));
+  if(s.torsoValid!==undefined)check(typeof s.torsoValid==='boolean'&&(s.torsoValid?number(s.trunk,-180,180):s.trunk==null));
+  if(s.valid)check(number(s.elbow,0,180)&&number(s.q,0,1)&&(s.torsoValid===false?s.trunk==null:number(s.trunk,-180,180)));
+  if(s.valid||s.torsoValid){check(Array.isArray(s.ids)&&s.ids.length===5&&s.ids.every(i=>Number.isInteger(i)&&i>=0&&i<33));check(Array.isArray(s.landmarks)&&s.landmarks.length===33&&s.landmarks.every(v=>v&&number(v.x,-10,10)&&number(v.y,-10,10)&&number(v.visibility,0,1)))}
+  if(!s.valid)check(text(s.reason||'',500));if(s.torsoReason!=null)check(text(s.torsoReason,500));
  }
  if(p.report!==null){const r=p.report;check(r&&number(r.coverage,0,1)&&text(r.status,200)&&Array.isArray(r.reps)&&r.reps.length<=120&&Array.isArray(r.events)&&r.events.length<=1000);let lastEnd=-1;
-  r.reps.forEach((rep,i)=>{check(rep.number===i+1&&number(rep.start,0,p.duration)&&number(rep.end,rep.start,p.duration+.25)&&rep.start>=lastEnd&&number(rep.range,0,360)&&number(rep.reference,rep.start,rep.end)&&number(rep.peak,rep.start,rep.end));lastEnd=rep.end});
+  r.reps.forEach((rep,i)=>{check(rep.number===i+1&&number(rep.start,0,p.duration)&&number(rep.end,rep.start,p.duration+.25)&&rep.start>=lastEnd&&(rep.torsoEvaluated===false?rep.range===null:number(rep.range,0,360))&&number(rep.reference,rep.start,rep.end)&&number(rep.peak,rep.start,rep.end));if(rep.torsoEvaluated!==undefined)check(typeof rep.torsoEvaluated==='boolean');if(rep.elbowMin!==undefined)check(number(rep.elbowMin,0,180)&&number(rep.elbowMax,rep.elbowMin,180));lastEnd=rep.end});
+  if(r.measurementVersion!==undefined){check(r.measurementVersion===2&&number(r.torsoCoverage,0,1)&&Number.isInteger(r.samples)&&r.samples===p.samples.length&&number(r.torsoFrames,0,r.samples));check(Array.isArray(r.limitations)&&r.limitations.length<=30);for(const l of r.limitations)check(['arm','torso','subject'].includes(l.scope)&&text(l.reason,500)&&Number.isInteger(l.frames)&&number(l.frames,1,r.samples)&&number(l.first,0,p.duration));if(r.torsoMotion!=null)check(number(r.torsoMotion.min,-180,180)&&number(r.torsoMotion.max,r.torsoMotion.min,180)&&number(r.torsoMotion.range,0,360)&&number(r.torsoMotion.t,0,p.duration)&&number(r.torsoMotion.reference,0,p.duration)&&number(r.torsoMotion.start,0,p.duration)&&number(r.torsoMotion.end,r.torsoMotion.start,p.duration));if(r.armMotion!==null)check(r.armMotion&&number(r.armMotion.min,0,180)&&number(r.armMotion.max,r.armMotion.min,180)&&number(r.armMotion.t,0,p.duration));}
   for(const e of r.events){check(['swing','unknown'].includes(e.type)&&number(e.t,0,p.duration)&&number(e.end,e.t,p.duration+.25)&&text(e.title,300)&&text(e.text,3000));if(e.type==='swing')check(Number.isInteger(e.rep)&&e.rep>=1&&e.rep<=r.reps.length&&number(e.reference,0,p.duration)&&number(e.range,0,360));}
  }
  check(p.report!==null||p.samples.length===0,'В проекте есть точки без завершённого анализа.');

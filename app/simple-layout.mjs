@@ -9,7 +9,7 @@ const title=document.querySelector('.title-row');title.querySelector('h1').textC
 const setup=document.querySelector('.setup');
 setup.querySelector('label[for="machine"]').textContent='Упражнение';
 $('upload').textContent='Загрузить видео';$('analyze').textContent='Повторить разбор';document.querySelector('.setup .check').hidden=true;
-const guide=document.createElement('p');guide.className='simple-guide';guide.textContent='Снимайте сбоку: один человек, неподвижная камера, суставы видны. Горизонтальная тяга сидя · до 60 секунд. Разбор начнётся автоматически.';setup.insertBefore(guide,setup.querySelector('.check'));
+const guide=document.createElement('p');guide.className='simple-guide';guide.textContent='Для руки нужны плечо, локоть и кисть; для корпуса — ещё таз. Снимайте сбоку, держите камеру неподвижно. До 60 секунд. Разбор начнётся автоматически.';setup.insertBefore(guide,setup.querySelector('.check'));
 const options=makeDetails('Сохранить или экспортировать разбор','result-options');
 options.append(document.querySelector('.project-bar'));
 // Keep legacy note fields for opening saved projects, outside the visible review flow.
