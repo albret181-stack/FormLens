@@ -26,7 +26,8 @@ const cli=path.join(bundle,'Contents','Resources','updater','sparkle.app','Conte
 const feed=`https://github.com/albret181-stack/FormLens/releases/download/v${version}/FormLens-${version}-arm64-appcast.xml`;
 if(bell){
  await evaluate("document.querySelector('.app-options').open=true;document.getElementById('updates-open').click();document.getElementById('updates-check').click();true");
- await until(async()=>{const s=await evaluate('window.formlensUpdates.state()');return s.status==='available'&&s.latest===version},'bell offers the published release');
+ let lastMetadata='';
+ await until(async()=>{const s=await evaluate('window.formlensUpdates.check()');const log=JSON.stringify(s);if(log!==lastMetadata){console.log('Bell metadata:',log);lastMetadata=log}return s.status==='available'&&s.latest===version},'bell offers the published release',180000);
  const enabled=await evaluate("!document.getElementById('updates-download').disabled&&!document.getElementById('updates-download').hidden");
  if(!enabled)throw Error('Bell does not enable native download');
  await evaluate("document.getElementById('updates-download').click();true");
