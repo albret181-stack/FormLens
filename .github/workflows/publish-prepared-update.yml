@@ -42,10 +42,30 @@ jobs:
           fi
       - name: Verify installed 0.9 updates, relaunches and preserves its stored project
         run: node scripts/verify-installed-update.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-update-cli-evidence
+          path: evidence/
+          if-no-files-found: ignore
+
+  bell:
+    needs: publish
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read verified release version
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_ENV,'VERSION='+require('./config/prepared-release.json').version+'\n')"
       - name: Make the verified release available through the bell
         id: promote
         run: gh release edit "v$VERSION" --draft=false --prerelease=false --latest
-      - name: Verify the real bell download and install buttons
+      - name: Verify real bell buttons on a fresh Mac with its own profile
         run: node scripts/verify-installed-update.mjs --bell
       - name: Withdraw from the update channel if the bell verification fails
         if: failure() && steps.promote.outcome == 'success'
@@ -53,6 +73,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: native-update-evidence
+          name: native-update-bell-evidence
           path: evidence/
           if-no-files-found: ignore

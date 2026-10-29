@@ -5,5 +5,6 @@
   "zipSha256": "b72b5db896413b431c3f4db9deb9e540e275c3216df4486d1bd1389cd70ff42c",
   "zipSize": 177710358,
   "signature": "VH1kzOFAEUWepYP9O+MWbtClAZ3YO9mVZmup8tM1hUdRf5rUjI+fLBWKFfruRXZea0H4LlaKe0nxXq7V1njCDw==",
-  "feedSha256": "8e84fca029d32962fd5dcf977dedabdb16be81f8f9e661fbbfae227e47e30e12"
+  "feedSha256": "8e84fca029d32962fd5dcf977dedabdb16be81f8f9e661fbbfae227e47e30e12",
+  "verificationRevision": 2
 }
