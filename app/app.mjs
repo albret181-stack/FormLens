@@ -10,6 +10,7 @@ import {selectRecovery} from './frame-recovery.mjs';
 import {EXERCISES,exerciseById} from './exercises.mjs';
 import {buildExerciseReview} from './exercise-review.mjs';
 import {regionsForFrame,regionPixels,mapFromRegion,chooseClipLayout} from './video-regions.mjs';
+import {SceneTracker} from './scene-cuts.mjs';
 import {renderSlideDeck,makeSlideReport} from './slides-ui.mjs';
 import {demoSample,drawDemo,demoDuration} from './demo.mjs';
 const $=id=>document.getElementById(id),video=$('video'),canvas=$('overlay');
@@ -96,7 +97,7 @@ async function captureSlideFrame(frame,point,attention=false){
 async function renderReport(){
  const previousBusy=uiBusy;uiBusy=true;controls();video.pause();demoPlaying=false;const original=current(),token=run;
  try{
-  const id=analysisConfig.exerciseId||'seated-row';report=analyze(samples);if(id!=='seated-row'){report.reps=[];report.events=report.events.filter(e=>e.type!=='swing')}currentReview=buildExerciseReview(samples,id,isDemo?960:video.videoWidth,isDemo?540:video.videoHeight);report.exerciseReviewVersion=1;
+  const id=analysisConfig.exerciseId||'seated-row';report=analyze(samples);if(id!=='seated-row'){report.reps=[];report.events=report.events.filter(e=>e.type!=='swing')}const checksReady=isDemo||samples.some(s=>s.views?.some(v=>Number.isInteger(v.scene)));const reviewSamples=checksReady?samples:samples.map((s,i)=>({...s,views:(s.views||[{region:{id:'full',label:'Видео',x:0,y:0,width:1,height:1},landmarks:s.landmarks}]).map(v=>({...v,scene:i}))}));currentReview=buildExerciseReview(reviewSamples,id,isDemo?960:video.videoWidth,isDemo?540:video.videoHeight);report.exerciseReviewVersion=1;
   $('status').textContent=currentReview.attention?'Есть моменты для проверки':currentReview.observed?'Проверены отдельные признаки':'Доступен частичный разбор';$('metrics').textContent=exerciseById(id).name;report.status=$('status').textContent;report.exerciseId=id;
   $('count').textContent=currentReview.attention?'Проверить: '+currentReview.attention:'Разбор';$('count').setAttribute('aria-label',$('count').textContent);$('stat-reps').textContent='—';$('stat-quality').textContent='—';$('timeline').replaceChildren();$('rep-list').replaceChildren();
   await renderSlideDeck($('events'),currentReview,{initialIndex:slideIndex,disabled:()=>busy||uiBusy,onIndex:i=>{slideIndex=i;markDirty()},capture:async(c,p,a)=>{if(token===run)await captureSlideFrame(c,p,a)},showFrame:p=>showObservation(p.t).catch(showError),replay:c=>replayFrames({start:c.start,end:c.end}).catch(showError)});
@@ -120,12 +121,12 @@ async function loadFile(file,{skipConfirm=false}={}){
 async function runAnalysis(){
  if(!loaded||!currentFile||isDemo||busy||uiBusy)return;
  const exerciseId=$('machine').value,layout=$('video-layout').value;
- reset();markDirty();busy=true;analysisConfig={...CONFIG,exerciseId,layout,slideReviewVersion:1};
+ reset();markDirty();busy=true;analysisConfig={...CONFIG,exerciseId,layout,slideReviewVersion:1,sceneReviewVersion:1};
  analysisMessage('Разбираю видео…','Проверяю доступные признаки движения. Результат появится в слайдах.');$('status').textContent='Идёт разбор';controls();const token=run;
  notice(exerciseById(exerciseId).name,'Один файл — одно упражнение. Варианты в разделённом экране рассматриваются отдельно.');$('progress').textContent='Подготавливаю модель…';
  try{
   worker=new PoseClient(new Worker('./pose-worker.js'));const request=(data,transfer=[])=>worker.request(data,transfer);
-  const info=await request({type:'init'}),trackers=new Map(),sides=new Map();analysisConfig.poseModel=info.model;
+  const info=await request({type:'init'}),trackers=new Map(),sides=new Map(),scenes=new Map();const sceneCanvas=document.createElement('canvas');sceneCanvas.width=32;sceneCanvas.height=32;const sceneContext=sceneCanvas.getContext('2d',{willReadFrequently:true});analysisConfig.poseModel=info.model;
   let resolvedLayout=layout;
   if(layout==='auto'){$('progress').textContent='Определяю расположение вариантов…';const detected=[];for(const fraction of [.2,.55,.8]){await seek(video.duration*fraction);if(token!==run)throw Error('Анализ отменён');const image=await createImageBitmap(video),probe=await request({type:'image',bitmap:image,t:video.duration*fraction},[image]);detected.push(regionsForFrame(probe.poses,'auto'))}resolvedLayout=chooseClipLayout(detected)}
   analysisConfig.resolvedLayout=resolvedLayout;let recentRegions=null,recentRegionTime=-10;
@@ -137,15 +138,15 @@ async function runAnalysis(){
    for(const region of regions){
     if(token!==run)throw Error('Анализ отменён');const crop=regionPixels(region,video.videoWidth,video.videoHeight);let poses=result.poses;
     if(region.id!=='full'){const image=await createImageBitmap(video,crop.x,crop.y,crop.width,crop.height);poses=(await request({type:'image',bitmap:image,t},[image])).poses;}
-    if(!trackers.has(region.id))trackers.set(region.id,createSubjectTracker());const chosen=trackers.get(region.id).select(poses);let pose=chosen.pose;
+    if(!scenes.has(region.id))scenes.set(region.id,new SceneTracker());const sceneTracker=scenes.get(region.id),previousScene=sceneTracker.scene;sceneContext.drawImage(video,crop.x,crop.y,crop.width,crop.height,0,0,32,32);const scene=sceneTracker.update(sceneContext.getImageData(0,0,32,32).data);if(scene!==previousScene){trackers.delete(region.id);sides.delete(region.id)}if(!trackers.has(region.id))trackers.set(region.id,createSubjectTracker());const chosen=trackers.get(region.id).select(poses);let pose=chosen.pose;
     let m=pose?measure([pose],crop.width,crop.height,sides.get(region.id)):{valid:false,torsoValid:false,reason:chosen.reason,torsoReason:chosen.reason},recovery=null;
     if(region.id==='full'&&pose&&(!m.valid||!m.torsoValid)){
      const image=await createImageBitmap(video),retry=await request({type:'image',bitmap:image,t},[image]);if(token!==run)throw Error('Анализ отменён');
      const candidate=selectRecovery(pose,m,retry.poses,crop.width,crop.height,sides.get(region.id));if(candidate){pose=candidate.pose;m=candidate.measurement;recovery='image'}
     }
-    if(m.valid)sides.set(region.id,m.side);views.push({region,landmarks:mapFromRegion(pose,region),reason:chosen.reason,...m,recovery});
+    if(m.valid)sides.set(region.id,m.side);views.push({region,scene,landmarks:mapFromRegion(pose,region),reason:chosen.reason,...m,recovery});
    }
-   const compact=p=>p?.map(v=>({x:+v.x.toFixed(6),y:+v.y.toFixed(6),visibility:+v.visibility.toFixed(6)}))||null;for(const v of views)v.landmarks=compact(v.landmarks);const primary=views[0];samples.push({t,...primary,landmarks:primary?.landmarks||null,views:views.map(({region,landmarks})=>({region,landmarks}))});
+   const compact=p=>p?.map(v=>({x:+v.x.toFixed(6),y:+v.y.toFixed(6),visibility:+v.visibility.toFixed(6)}))||null;for(const v of views)v.landmarks=compact(v.landmarks);const primary=views[0];samples.push({t,...primary,landmarks:primary?.landmarks||null,views:views.map(({region,scene,landmarks})=>({region,scene,landmarks}))});
    $('progress').textContent=`Разбор ${Math.round((i+1)/total*100)}%`;updateClock();
   }
   report=analyze(samples);if(exerciseId!=='seated-row'){report.reps=[];report.events=report.events.filter(e=>e.type!=='swing')}

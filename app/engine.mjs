@@ -55,9 +55,9 @@ const torsoOK=s=>s.torsoValid??(s.valid&&Number.isFinite(s.trunk));
 const quantile=(arr,q)=>[...arr].sort((a,b)=>a.trunk-b.trunk)[Math.floor((arr.length-1)*q)];
 export function analyze(samples){
  let state='waiting',start=0;const reps=[],events=[];
- const smooth=samples.map((s,i)=>{const n=samples.slice(Math.max(0,i-1),i+2);if(!s.valid||n.some(v=>!v.valid||v.side!==s.side))return s;return {...s,elbow:n.map(x=>x.elbow).sort((a,b)=>a-b)[Math.floor(n.length/2)]}});
+ const smooth=samples.map((s,i)=>{const n=samples.slice(Math.max(0,i-1),i+2);if(!s.valid||n.some(v=>!v.valid||v.side!==s.side||(v.scene??0)!==(s.scene??0)||(v.region?.id||'full')!==(s.region?.id||'full')))return s;return {...s,elbow:n.map(x=>x.elbow).sort((a,b)=>a-b)[Math.floor(n.length/2)]}});
  for(let i=0;i<smooth.length;i++){
-  const s=smooth[i];if(!s.valid||(i&&(s.t-smooth[i-1].t>.3||s.side!==smooth[i-1].side))){state='waiting';if(!s.valid)continue}
+  const s=smooth[i];if(!s.valid||(i&&(s.t-smooth[i-1].t>.3||s.side!==smooth[i-1].side||(s.scene??0)!==(smooth[i-1].scene??0)||(s.region?.id||'full')!==(smooth[i-1].region?.id||'full')))){state='waiting';if(!s.valid)continue}
   if(state!=='waiting'&&s.t-smooth[start].t>CONFIG.maxDuration)state='waiting';
   if(state==='waiting'&&s.elbow>=CONFIG.extended){start=i;state='extended'}
   else if(state==='extended'&&s.elbow<=CONFIG.flexed)state='flexed';
@@ -99,7 +99,7 @@ export function analyze(samples){
  const arms=visibleArms.filter(s=>s.side===armSide);
  const armMotion=arms.length>=3?{side:armSide,min:Math.min(...arms.map(s=>s.elbow)),max:Math.max(...arms.map(s=>s.elbow)),t:arms.reduce((a,b)=>a.elbow<b.elbow?a:b).t}:null;
  const segments=[];let segment=[];
- for(const s of samples){if(!torsoOK(s)||segment.length&&(s.t-segment.at(-1).t>.3||s.side!==segment.at(-1).side)){if(segment.length)segments.push(segment);segment=[]}if(torsoOK(s))segment.push(s)}if(segment.length)segments.push(segment);
+ for(const s of samples){if(!torsoOK(s)||segment.length&&(s.t-segment.at(-1).t>.3||s.side!==segment.at(-1).side||(s.scene??0)!==(segment.at(-1).scene??0)||(s.region?.id||'full')!==(segment.at(-1).region?.id||'full'))){if(segment.length)segments.push(segment);segment=[]}if(torsoOK(s))segment.push(s)}if(segment.length)segments.push(segment);
  const longest=segments.filter(g=>g.length>=CONFIG.sampleHz).sort((a,b)=>b.length-a.length)[0];
  const low=longest?quantile(longest,.2):null,high=longest?quantile(longest,.8):null;
  const torsoMotion=longest?{min:low.trunk,max:high.trunk,range:high.trunk-low.trunk,t:high.t,reference:low.t,start:longest[0].t,end:longest.at(-1).t}:null;

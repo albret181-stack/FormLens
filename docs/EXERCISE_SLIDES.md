@@ -43,8 +43,10 @@ Experimental geometric checks:
 
 Checks require continuous neighbor-supported observations, >=16 samples, >=1.8s
 and observable motion. Every eligible interval is evaluated; a longer clean
-interval cannot suppress a shorter attention interval. Gaps and view identity
-changes are not bridged. Robust 20th/80th percentiles suppress isolated spikes.
+interval cannot suppress a shorter attention interval. Gaps, view identity changes and detected visual cuts are not bridged.
+A per-region 32x32 pixel discontinuity check resets tracking and interval
+eligibility conservatively across hard edits and large visual jumps. This is a
+heuristic discontinuity detector, not perfect scene segmentation. Robust 20th/80th percentiles suppress isolated spikes.
 Display thresholds (15deg knee change, 18deg trunk range, 20deg elbow difference,
 0.15 torso-length elbow height) are experimental engineering values, not clinical
 cutoffs or measured accuracy. No muscles' activation percentages, pain diagnosis,
@@ -58,6 +60,8 @@ The source player is disclosed on demand; replay uses 0.5x. HTML export preserve
 the same slide content and frames. The portable format and storage schema remain
 compatible; panel points, selected exercise and slide position are retained.
 Existing saved projects use their stored points without a new model run.
+Old samples without discontinuity provenance show frames and unassessed checks
+until the user explicitly runs a new analysis.
 
 Verification includes synthetic unit cases for visibility, motion, gaps, separate
 views of one exercise, interval selection, crop mapping, export/import integrity

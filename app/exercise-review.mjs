@@ -22,7 +22,7 @@ export function exerciseMeasurements(p,width,height){
  return result;
 }
 const percentile=(arr,f)=>[...arr].sort((a,b)=>a.value-b.value)[Math.floor((arr.length-1)*f)];
-function continuousSegments(rows){const groups=[];let segment=[];for(const row of rows){if(!row||segment.length&&(row.t-segment.at(-1).t>.3||row.side!==segment.at(-1).side)){if(segment.length)groups.push(segment);segment=[]}if(row)segment.push(row)}if(segment.length)groups.push(segment);return groups;}
+function continuousSegments(rows){const groups=[];let segment=[];for(const row of rows){if(!row||segment.length&&(row.t-segment.at(-1).t>.3||row.side!==segment.at(-1).side||row.scene!==segment.at(-1).scene)){if(segment.length)groups.push(segment);segment=[]}if(row)segment.push(row)}if(segment.length)groups.push(segment);return groups;}
 function stableRows(rows){return rows.filter((r,i)=>r&&i>0&&i<rows.length-1&&rows[i-1]&&rows[i+1]&&rows[i-1].side===r.side&&rows[i+1].side===r.side&&r.t-rows[i-1].t<=.2&&rows[i+1].t-r.t<=.2);}
 function makeCheck(rows,kind,label,exercise){
  const key=kind==='knee'?'Knee':kind==='trunk'?'Trunk':kind==='elbow-height'?'ElbowHeight':'Elbow';
@@ -37,10 +37,10 @@ function makeCheck(rows,kind,label,exercise){
   if(kind!=='symmetry'&&kind!=='elbow-height'&&m.projection!=null&&m.projection>.7)return null;
   if(kind==='symmetry'){
    if(m.projection==null||m.projection<.55||!m.leftElbow||!m.rightElbow)return null;
-   return {t:row.t,value:Math.abs(m.leftElbow.value-m.rightElbow.value),motion:(m.leftElbow.value+m.rightElbow.value)/2,side:'both',ids:[11,13,15,12,14,16],region:row.region};
+   return {t:row.t,value:Math.abs(m.leftElbow.value-m.rightElbow.value),motion:(m.leftElbow.value+m.rightElbow.value)/2,scene:row.scene,side:'both',ids:[11,13,15,12,14,16],region:row.region};
   }
   const v=m[side+key],motion=kind==='knee'?m[side+'Hip']:exercise.id==='cable-kickback'?m[side+'Hip']:m[side+'Elbow'];
-  return v&&motion?{...v,t:row.t,motion:motion.value,region:row.region}:null;
+  return v&&motion?{...v,t:row.t,scene:row.scene,motion:motion.value,region:row.region}:null;
  });
  const segments=continuousSegments(observed).map(stableRows);
  const base={kind,label,viewId:rows[0]?.region.id||'full',viewLabel:rows[0]?.region.label||'Видео',status:'unknown',t:rows.find(r=>r.m)?.t??rows[0]?.t??0,ids:[],value:null,threshold:CHECK_LIMITS[kind],coverage:0};
@@ -61,7 +61,7 @@ function makeCheck(rows,kind,label,exercise){
 export function buildExerciseReview(samples,exerciseId,width,height){
  const exercise=exerciseById(exerciseId),views=new Map();
  for(const sample of samples){const source=sample.views||[{region:{id:'full',label:'Видео',x:0,y:0,width:1,height:1},landmarks:sample.landmarks}];
-  for(const v of source){const id=v.region.id;if(!views.has(id))views.set(id,[]);views.get(id).push({t:sample.t,region:v.region,m:exerciseMeasurements(v.landmarks,width,height),landmarks:v.landmarks})}
+  for(const v of source){const id=v.region.id;if(!views.has(id))views.set(id,[]);views.get(id).push({t:sample.t,scene:v.scene||0,region:v.region,m:exerciseMeasurements(v.landmarks,width,height),landmarks:v.landmarks})}
  }
  const checks=[];for(const rows of views.values())for(const kind of exercise.checks){const labels={knee:'Сохранение сгибания колена',trunk:'Изменение наклона корпуса',symmetry:'Различие движений рук','elbow-height':'Высота видимого локтя относительно плеча'};checks.push(makeCheck(rows,kind,labels[kind],exercise));}
  const frames=[];for(const [id,rows]of views){const candidates=rows.filter(r=>r.landmarks);if(!candidates.length)continue;for(const f of [.15,.5,.85]){const row=candidates[Math.min(candidates.length-1,Math.floor(candidates.length*f))];frames.push({t:row.t,region:row.region,viewId:id,ids:[],label:row.region.label})}}
