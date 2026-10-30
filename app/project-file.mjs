@@ -15,12 +15,16 @@ export function validateMetadata(p){
  check(number(p.duration,1,60)&&number(p.currentTime||0,0,p.duration));
  check(Array.isArray(p.compareTimes)&&p.compareTimes.length<=2&&p.compareTimes.every(t=>number(t,0,p.duration)));
  check(p.config&&number(p.config.sampleHz,1,60)&&number(p.config.swing,0,180)&&number(p.config.visibility,0,1));
+ if(p.config.exerciseId!==undefined)check(text(p.config.exerciseId,80));
+ if(p.config.slideIndex!==undefined)check(Number.isInteger(p.config.slideIndex)&&number(p.config.slideIndex,0,100));
+ if(p.config.layout!==undefined)check(['auto','single','stacked2','side2','stacked3','four'].includes(p.config.layout));
  check(Array.isArray(p.samples)&&p.samples.length<=3600);
  let last=-1;
  for(const s of p.samples){check(number(s.t,0,p.duration)&&s.t>last&&typeof s.valid==='boolean');last=s.t;
   if(s.torsoValid!==undefined)check(typeof s.torsoValid==='boolean'&&(s.torsoValid?number(s.trunk,-180,180):s.trunk==null));
   if(s.valid)check(number(s.elbow,0,180)&&number(s.q,0,1)&&(s.torsoValid===false?s.trunk==null:number(s.trunk,-180,180)));
   if(s.valid||s.torsoValid){check(Array.isArray(s.ids)&&s.ids.length===5&&s.ids.every(i=>Number.isInteger(i)&&i>=0&&i<33));check(Array.isArray(s.landmarks)&&s.landmarks.length===33&&s.landmarks.every(v=>v&&number(v.x,-10,10)&&number(v.y,-10,10)&&number(v.visibility,0,1)))}
+  if(s.views!==undefined){check(Array.isArray(s.views)&&s.views.length>=1&&s.views.length<=4);const seen=new Set();for(const v of s.views){const r=v.region;check(r&&text(r.id,30)&&text(r.label,80)&&!seen.has(r.id)&&number(r.x,0,1)&&number(r.y,0,1)&&number(r.width,.01,1)&&number(r.height,.01,1)&&r.x+r.width<=1.001&&r.y+r.height<=1.001);seen.add(r.id);if(v.landmarks!=null)check(Array.isArray(v.landmarks)&&v.landmarks.length===33&&v.landmarks.every(p=>p&&number(p.x,-10,10)&&number(p.y,-10,10)&&number(p.visibility,0,1)));}}
   if(s.recovery!=null)check(['image','crop'].includes(s.recovery));
   if(s.landmarks!=null)check(Array.isArray(s.landmarks)&&s.landmarks.length===33&&s.landmarks.every(v=>v&&number(v.x,-10,10)&&number(v.y,-10,10)&&number(v.visibility,0,1)));
   if(!s.valid)check(text(s.reason||'',500));if(s.torsoReason!=null)check(text(s.torsoReason,500));

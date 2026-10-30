@@ -1,6 +1,6 @@
 {
   "name": "formlens",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "Local machine-exercise video review",
   "private": true,
   "main": "main.cjs",

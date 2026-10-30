@@ -32,7 +32,7 @@ jobs:
           node -e "const cp=require('node:child_process');const key=cp.execFileSync('/usr/libexec/PlistBuddy',['-c','Print :SUPublicEDKey','../build/FormLens-darwin-arm64/FormLens.app/Contents/Info.plist'],{encoding:'utf8'}).trim();if(key!==process.env.FORMLENS_UPDATE_PUBLIC_KEY)throw Error('wrong embedded key')"
 
   installer:
-    name: Build FormLens 0.9.3 installer
+    name: Build FormLens 0.10.0 installer
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -52,10 +52,10 @@ jobs:
       - name: Stage installer files
         run: |
           mkdir -p release-artifacts
-          cp ../FormLens-0.9.3-arm64.dmg ../SHA256SUMS.txt release-artifacts/
+          cp ../FormLens-0.10.0-arm64.dmg ../SHA256SUMS.txt release-artifacts/
       - uses: actions/upload-artifact@v4
         with:
-          name: FormLens-0.9.3-arm64-installer
+          name: FormLens-0.10.0-arm64-installer
           path: release-artifacts/
           if-no-files-found: error
           retention-days: 30
