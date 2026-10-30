@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>FormLens</title><item><title>FormLens 0.9.3</title><sparkle:version>0.9.3</sparkle:version><sparkle:shortVersionString>0.9.3</sparkle:shortVersionString><enclosure url="https://github.com/albret181-stack/FormLens/releases/download/v0.9.3/FormLens-0.9.3-arm64.zip" sparkle:edSignature="+nO7uycu25CxgNX5Lkiihnau/hqv3I78mDM9n1kZ03m8g0SsGo8LZxAAx4afAmeo6UR6iafLQhxelE7WS+eJDQ==" length="177715454" type="application/octet-stream" /></item></channel></rss>
+<!-- sparkle-signatures:
+edSignature: rLXXJtbWcbfipfldS1n6Ma+IcnUeBc48mN3v7CT/5qVIJV5NfK4gEbnfc45pLHhx8SNyC91c7GiZKma+zMBlCw==
+length: 594
+-->

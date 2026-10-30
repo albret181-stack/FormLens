@@ -23,3 +23,100 @@
 .simple-ui .scope p{font-size:12px}
 .simple-ui .framebadge{max-width:calc(100% - 24px);box-sizing:border-box;font-size:11px;line-height:1.4}
 @media(max-width:760px){.simple-ui .analysis-layout{grid-template-columns:1fr}.simple-ui .stage{height:clamp(240px,48vh,400px)}.simple-ui .review-controls{font-size:11px}.simple-ui .transport{gap:7px}.simple-ui .transport span{font-size:10px}}
+
+/* Upload starts analysis; its progress and results stay directly below the video. */
+.simple-ui .analysis-layout{grid-template-columns:minmax(0,1fr)}
+.simple-ui.has-video .findings{display:block}
+.simple-ui .setup .check{display:none}
+.simple-ui.has-video .simple-guide{display:block;grid-column:1/-1}
+.simple-ui .findings .work-footer{padding:0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.simple-ui .findings #progress{flex:1;min-width:180px;font-size:14px;line-height:1.5}
+.simple-ui .findings[aria-busy="true"]{border-color:var(--theme-accent)}
+.simple-ui #events{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.simple-ui #events>.placeholder{grid-column:1/-1;padding:24px 8px}
+
+.simple-ui .analysis-overview,.simple-ui .analysis-verdict,.simple-ui .recognition-limitations{grid-column:1/-1;padding:16px 4px}
+.simple-ui .analysis-overview h3,.simple-ui .analysis-verdict h3,.simple-ui .arm-observation h3{margin:0 0 10px;font-size:17px}
+.simple-ui .analysis-overview p,.simple-ui .analysis-verdict p,.simple-ui .recognition-limitations,.simple-ui .arm-observation p{font-size:14px;line-height:1.6}
+.simple-ui .recognition-limitations{border-top:1px solid var(--theme-line)}
+.simple-ui .recognition-limitations>summary{font-size:16px;font-weight:600}
+.simple-ui .recognition-limitations li{margin-bottom:8px}
+.simple-ui .limitation-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.simple-ui .limitation-links button{font-size:12px;padding:8px}
+.simple-ui .arm-observation{border:1px solid var(--theme-line);border-radius:8px;padding:18px}
+.simple-ui .findings .count{width:auto;min-width:90px;height:auto;padding:5px 8px;white-space:nowrap;font-size:12px}
+.simple-ui .recognition-limitations,.simple-ui .recognition-limitations details,.simple-ui .result-options{max-width:none;width:100%;text-align:left;box-sizing:border-box}
+.simple-ui .arm-observation{grid-column:1/-1;max-width:720px;width:100%;box-sizing:border-box}
+.simple-ui .arm-observation .evidence-frame{height:280px}
+
+
+/* Chronological source frames, sized to remain readable below the player. */
+.simple-ui .frame-review {grid-column:1/-1;min-width:0;margin:12px 0;}
+.frame-review h4 {font-size:19px;margin:0 0 10px;}
+.phase-group {padding:20px 0;border-top:1px solid var(--theme-line);}
+.phase-strip {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;}
+.phase-strip figure {margin:0;min-width:0;background:var(--theme-surface);border:1px solid var(--theme-line);border-radius:8px;overflow:hidden;}
+.phase-frame {display:block;width:100%;height:240px;object-fit:contain;background:#18211e;}
+.phase-strip figcaption {padding:12px;font-size:13px;line-height:1.55;}
+.phase-strip figcaption strong {display:block;font-size:13px;}
+.phase-strip figcaption p {font-size:13px;line-height:1.55;margin:8px 0;}
+.phase-strip button,.phase-group>button {font-size:13px;padding:8px 12px;}
+.phase-group>button {margin-top:14px;}
+.phase-checks {font-size:13px;line-height:1.7;padding-left:18px;}
+.frame-review details {max-width:none;text-align:left;margin:18px 0;}
+.frame-diagnostics summary {cursor:pointer;margin:12px 0;}
+@media(max-width:760px){.phase-strip{grid-template-columns:repeat(2,minmax(0,1fr));}.phase-frame{height:160px;}}
+@media(max-width:480px){.phase-strip{grid-template-columns:1fr;}.phase-frame{height:210px;}}
+
+.simple-ui .rep-list{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;}
+
+/* Upload → one exercise choice → a readable slide deck. */
+.simple-ui:not(.has-video) .exercise-field,.simple-ui:not(.has-video) #source-toggle,.simple-ui:not(.has-video) .layout-options{display:none}
+.simple-ui .simple-guide{display:none!important}
+.simple-ui.has-video .setup{grid-template-columns:1fr 1fr;align-items:start}
+.simple-ui .shoot-guide,.simple-ui .layout-options{grid-column:1/-1;max-width:none;text-align:left;width:100%;box-sizing:border-box;border-top:1px solid var(--theme-line);padding-top:12px}
+.simple-ui .shoot-guide p,.simple-ui .layout-options p{font-size:13px;line-height:1.6;margin:10px 0}
+.simple-ui .layout-options select{width:100%;margin-top:8px}
+.simple-ui .stage{height:clamp(240px,42vh,380px)}
+.simple-ui.has-report:not(.show-source) .viewer{display:none}
+.simple-ui.has-report .summary{display:none}
+.simple-ui.has-report #events{display:block;padding:0 20px 20px}
+.simple-ui .findings .scope{padding:0 20px 16px}
+.simple-ui .findings .scope p{margin:0;font-size:12px;line-height:1.6}
+.simple-ui .slide-deck{width:100%;min-width:0}
+.slide-nav{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:10px 0 18px}
+.slide-nav span{font-size:13px;font-variant-numeric:tabular-nums;color:var(--theme-muted)}
+.slide-nav button{padding:10px 16px;min-height:42px}
+.review-slide{padding:24px;border:1px solid var(--theme-line);border-radius:16px;background:var(--theme-surface);min-width:0;box-sizing:border-box}
+.review-slide[hidden]{display:none!important}
+.slide-tag{font-size:12px;color:var(--theme-muted);display:inline-block;padding:5px 10px;border:1px solid var(--theme-line);border-radius:20px;margin-bottom:12px}
+.review-slide h3{font-size:25px;line-height:1.25;letter-spacing:-.5px;margin:0 0 14px}
+.review-slide.slide-attention{border-left:4px solid #dca04c}
+.review-slide.slide-observed{border-left:4px solid #4ba994}
+.review-slide p{font-size:15px;line-height:1.65;margin:0 0 18px}
+.slide-images{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin:18px 0}
+.slide-images.multiple{grid-template-columns:repeat(3,minmax(0,1fr))}
+.slide-images figure{margin:0;min-width:0}
+.slide-evidence{display:block;width:100%;height:340px;object-fit:contain;background:#18211e;border-radius:10px}
+.slide-images.multiple .slide-evidence{height:230px}
+.slide-images figcaption{font-size:12px;color:var(--theme-muted);margin-top:8px}
+.slide-points{font-size:14px;line-height:1.65;padding-left:20px;margin:16px 0}
+.slide-points li{margin:8px 0}
+.slide-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.slide-dots{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.slide-dots button{min-width:34px;min-height:34px;padding:5px 9px;font-size:12px}
+.slide-dots button[aria-current="true"]{background:var(--theme-accent);color:var(--theme-ink);border-color:var(--theme-accent)}
+.slide-stage:focus-visible{outline:2px solid var(--theme-accent);outline-offset:4px;border-radius:16px}
+.camera-card{padding:20px;border:1px dashed var(--theme-line);border-radius:10px;font-size:14px;line-height:1.6;margin-top:20px}
+#exercise-dialog{width:min(640px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;padding:28px;border-radius:20px;border:1px solid var(--theme-line);background:var(--theme-surface);color:var(--theme-text)}
+#exercise-dialog::backdrop{background:#0b1715b8}
+#exercise-dialog h2{font-size:25px;line-height:1.25;margin:0 0 12px}
+#exercise-dialog p{font-size:14px;line-height:1.6;margin:0 0 18px}
+#exercise-search{width:100%;box-sizing:border-box;margin-bottom:16px;padding:12px;font:inherit}
+#exercise-choices{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:20px}
+#exercise-choices button{font-size:14px;text-align:left;line-height:1.4;min-height:58px;padding:12px}
+#exercise-skip{width:100%;text-align:center;padding:13px;margin-bottom:12px}
+@media(max-width:760px){.simple-ui.has-video .setup{grid-template-columns:1fr}.review-slide{padding:18px}.review-slide h3{font-size:21px}.slide-evidence{height:290px}.slide-images.multiple{grid-template-columns:repeat(3,minmax(0,1fr))}.slide-images.multiple .slide-evidence{height:160px}}
+@media(max-width:480px){.simple-ui.has-report #events{padding:0 12px 12px}.review-slide{padding:14px}.review-slide p,.slide-points{font-size:13px}.slide-images.multiple{grid-template-columns:1fr}.slide-images.multiple .slide-evidence{height:230px}#exercise-choices{grid-template-columns:1fr}#exercise-dialog{padding:20px}.slide-actions button{width:100%;white-space:normal}}
+
+.simple-ui:not(.has-report) #source-toggle{display:none}

@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,14 +21,17 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run package
-      - run: npm run dist
+      - name: Build free Sparkle DMG, ZIP and signed appcast
+        env:
+          FORMLENS_UPDATE_PRIVATE_KEY: ${{ secrets.FORMLENS_UPDATE_PRIVATE_KEY }}
+        run: npm run dist
       - name: Publish draft for review
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" --json isDraft > release-state.json 2>/dev/null; then
             node -e "if(!require('./release-state.json').isDraft)throw Error('Refusing to replace a published release')"
-            gh release upload "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../SHA256SUMS.txt --clobber
+            gh release upload "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../FormLens-*-arm64.zip ../FormLens-*-arm64-appcast.xml ../appcast.xml ../SHA256SUMS.txt --clobber
           else
-            gh release create "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../SHA256SUMS.txt --draft --title "FormLens $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+            gh release create "$GITHUB_REF_NAME" ../FormLens-*-arm64.dmg ../FormLens-*-arm64.zip ../FormLens-*-arm64-appcast.xml ../appcast.xml ../SHA256SUMS.txt --draft --title "FormLens $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
           fi
