@@ -100,51 +100,67 @@ function summarizeClass(type, annotations, predictions, matched) {
   return { type, tp, fp, fn, precision, recall, f1, meanStartErrorSeconds: startError, meanEndErrorSeconds: endError };
 }
 
-export function evaluateEventDataset(input, { split, tiou } = {}) {
-  const data = validateEventDataset(input);
-  assert(SPLITS.has(split), 'split must be explicitly set to train, validation, or test');
-  assert(Number.isFinite(tiou) && tiou > 0 && tiou <= 1, 'tiou must be explicitly set in (0, 1]');
-  const clips = data.clips.filter(clip => clip.split === split);
-  assert(clips.length > 0, `no clips found for split: ${split}`);
+function scoreClips(clips, tiou) {
+  const typeStats = new Map();
+  const subjectStats = new Map();
   let totalDuration = 0;
   let reviewedDuration = 0;
   let skippedPredictions = 0;
-  const allAnnotations = [];
-  const allPredictions = [];
   for (const clip of clips) {
     totalDuration += clip.durationSeconds;
-    reviewedDuration += clip.reviewedIntervals.reduce((sum, [start, end]) => sum + end - start, 0);
-    allAnnotations.push(...clip.annotations.map(event => ({ ...event, clipId: clip.id })));
+    const clipReviewed = clip.reviewedIntervals.reduce((sum, [start, end]) => sum + end - start, 0);
+    reviewedDuration += clipReviewed;
+    const subject = subjectStats.get(clip.subjectGroup) || { tp: 0, fp: 0, fn: 0, reviewedMinutes: 0 };
+    subject.reviewedMinutes += clipReviewed / 60;
+    subjectStats.set(clip.subjectGroup, subject);
+    const annotations = clip.annotations;
+    const predictions = [];
     for (const prediction of clip.predictions) {
       const midpoint = (prediction.start + prediction.end) / 2;
-      if (clip.reviewedIntervals.some(([start, end]) => midpoint >= start && midpoint <= end)) allPredictions.push({ ...prediction, clipId: clip.id });
+      if (clip.reviewedIntervals.some(([start, end]) => midpoint >= start && midpoint <= end)) predictions.push(prediction);
       else skippedPredictions++;
     }
-  }
-  const types = [...new Set([...allAnnotations, ...allPredictions].map(event => event.type))].sort();
-  const byType = types.map(type => {
-    const annotations = allAnnotations.filter(event => event.type === type);
-    const predictions = allPredictions.filter(event => event.type === type);
-    const matched = [];
-    for (const clip of clips) {
-      const clipAnnotations = annotations.filter(event => event.clipId === clip.id);
-      const clipPredictions = predictions.filter(event => event.clipId === clip.id);
-      matched.push(...matchEvents(clipAnnotations, clipPredictions, tiou).map(pair => ({ ...pair,
-        predictionIndex: predictions.indexOf(clipPredictions[pair.predictionIndex]),
-        annotationIndex: annotations.indexOf(clipAnnotations[pair.annotationIndex])
-      })));
+    const types = new Set([...annotations, ...predictions].map(event => event.type));
+    for (const type of types) {
+      const typeAnnotations = annotations.filter(event => event.type === type);
+      const typePredictions = predictions.filter(event => event.type === type);
+      const matched = matchEvents(typeAnnotations, typePredictions, tiou);
+      const row = typeStats.get(type) || { type, tp: 0, fp: 0, fn: 0, boundaryPairs: [] };
+      const tp = matched.length;
+      const fp = typePredictions.length - tp;
+      const fn = typeAnnotations.length - tp;
+      row.tp += tp;
+      row.fp += fp;
+      row.fn += fn;
+      for (const pair of matched) row.boundaryPairs.push({
+        start: Math.abs(typePredictions[pair.predictionIndex].start - typeAnnotations[pair.annotationIndex].start),
+        end: Math.abs(typePredictions[pair.predictionIndex].end - typeAnnotations[pair.annotationIndex].end)
+      });
+      typeStats.set(type, row);
+      subject.tp += tp;
+      subject.fp += fp;
+      subject.fn += fn;
     }
-    return summarizeClass(type, annotations, predictions, matched);
+  }
+  const byType = [...typeStats.values()].sort((a, b) => a.type.localeCompare(b.type)).map(row => {
+    const matched = row.boundaryPairs;
+    const precision = row.tp + row.fp ? row.tp / (row.tp + row.fp) : null;
+    const recall = row.tp + row.fn ? row.tp / (row.tp + row.fn) : null;
+    const f1 = precision !== null && recall !== null && precision + recall > 0 ? 2 * precision * recall / (precision + recall) : null;
+    return {
+      type: row.type, tp: row.tp, fp: row.fp, fn: row.fn, precision, recall, f1,
+      meanStartErrorSeconds: matched.length ? matched.reduce((sum, pair) => sum + pair.start, 0) / matched.length : null,
+      meanEndErrorSeconds: matched.length ? matched.reduce((sum, pair) => sum + pair.end, 0) / matched.length : null
+    };
   });
   const tp = byType.reduce((sum, row) => sum + row.tp, 0);
   const fp = byType.reduce((sum, row) => sum + row.fp, 0);
   const fn = byType.reduce((sum, row) => sum + row.fn, 0);
   const totalReviewedMinutes = reviewedDuration / 60;
   return {
-    schemaVersion: 1, split, tiou, clips: clips.length,
+    totalDuration, reviewedDuration, skippedPredictions, subjectStats,
     reviewedCoverage: totalDuration ? reviewedDuration / totalDuration : 0,
     reviewedMinutes: totalReviewedMinutes,
-    skippedPredictions,
     overall: {
       tp, fp, fn,
       precision: tp + fp ? tp / (tp + fp) : null,
@@ -155,10 +171,104 @@ export function evaluateEventDataset(input, { split, tiou } = {}) {
   };
 }
 
+function metricValues(counts) {
+  const precision = counts.tp + counts.fp ? counts.tp / (counts.tp + counts.fp) : null;
+  const recall = counts.tp + counts.fn ? counts.tp / (counts.tp + counts.fn) : null;
+  const f1 = precision !== null && recall !== null && precision + recall > 0 ? 2 * precision * recall / (precision + recall) : null;
+  const falseAlertsPerReviewedMinute = counts.reviewedMinutes > 0 ? counts.fp / counts.reviewedMinutes : null;
+  return { precision, recall, f1, falseAlertsPerReviewedMinute };
+}
+
+function percentile(sorted, p) {
+  const position = (sorted.length - 1) * p;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+}
+
+function clusterBootstrap(subjectStats, replicates, seed) {
+  const groups = [...subjectStats.values()];
+  if (groups.length < 2) return {
+    method: 'subject-cluster percentile bootstrap',
+    subjectGroups: groups.length,
+    requestedReplicates: replicates,
+    seed,
+    intervals95: null,
+    reason: 'At least two independent subject groups are required'
+  };
+  let state = seed >>> 0;
+  const random = () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const draws = { precision: [], recall: [], f1: [], falseAlertsPerReviewedMinute: [] };
+  for (let i = 0; i < replicates; i++) {
+    const sample = { tp: 0, fp: 0, fn: 0, reviewedMinutes: 0 };
+    for (let j = 0; j < groups.length; j++) {
+      const group = groups[Math.floor(random() * groups.length)];
+      sample.tp += group.tp;
+      sample.fp += group.fp;
+      sample.fn += group.fn;
+      sample.reviewedMinutes += group.reviewedMinutes;
+    }
+    const values = metricValues(sample);
+    for (const [key, value] of Object.entries(values)) if (value !== null) draws[key].push(value);
+  }
+  const intervals95 = Object.fromEntries(Object.entries(draws).map(([key, values]) => {
+    const sorted = values.sort((a, b) => a - b);
+    return [key, sorted.length ? {
+      low: percentile(sorted, 0.025),
+      high: percentile(sorted, 0.975),
+      validReplicates: sorted.length
+    } : null];
+  }));
+  return {
+    method: 'subject-cluster percentile bootstrap',
+    subjectGroups: groups.length,
+    requestedReplicates: replicates,
+    seed,
+    intervals95
+  };
+}
+
+export function evaluateEventDataset(input, { split, tiou, bootstrapReplicates = 1000, seed = 1 } = {}) {
+  const data = validateEventDataset(input);
+  assert(SPLITS.has(split), 'split must be explicitly set to train, validation, or test');
+  assert(Number.isFinite(tiou) && tiou > 0 && tiou <= 1, 'tiou must be explicitly set in (0, 1]');
+  assert(Number.isInteger(bootstrapReplicates) && bootstrapReplicates >= 0 && bootstrapReplicates <= 50000, 'bootstrapReplicates must be an integer from 0 to 50000');
+  assert(Number.isSafeInteger(seed) && seed >= 0 && seed <= 4294967295, 'seed must be a non-negative safe integer');
+  const clips = data.clips.filter(clip => clip.split === split);
+  assert(clips.length > 0, `no clips found for split: ${split}`);
+  const score = scoreClips(clips, tiou);
+  return {
+    schemaVersion: 1,
+    split,
+    tiou,
+    clips: clips.length,
+    reviewedCoverage: score.reviewedCoverage,
+    reviewedMinutes: score.reviewedMinutes,
+    skippedPredictions: score.skippedPredictions,
+    overall: score.overall,
+    byType: score.byType,
+    confidenceIntervals95: bootstrapReplicates > 0
+      ? clusterBootstrap(score.subjectStats, bootstrapReplicates, seed)
+      : null
+  };
+}
+
 export function runEventEvaluator(args) {
   const splitIndex = args.indexOf('--split');
   const tiouIndex = args.indexOf('--tiou');
-  const path = args.find(arg => !arg.startsWith('--') && arg !== args[splitIndex + 1] && arg !== args[tiouIndex + 1]);
-  if (!path || splitIndex < 0 || tiouIndex < 0) throw new Error('Usage: node scripts/evaluate-events.mjs <dataset.json> --split <train|validation|test> --tiou <0..1>');
-  return { path, split: args[splitIndex + 1], tiou: Number(args[tiouIndex + 1]) };
+  const bootstrapIndex = args.indexOf('--bootstrap');
+  const seedIndex = args.indexOf('--seed');
+  const valueIndexes = new Set([splitIndex, tiouIndex, bootstrapIndex, seedIndex].filter(index => index >= 0).map(index => index + 1));
+  const path = args.find((arg, i) => !arg.startsWith('--') && !valueIndexes.has(i));
+  if (!path || splitIndex < 0 || tiouIndex < 0) throw new Error('Usage: node scripts/evaluate-events.mjs <dataset.json> --split <train|validation|test> --tiou <0..1> [--bootstrap <0..50000>] [--seed <integer>]');
+  return {
+    path,
+    split: args[splitIndex + 1],
+    tiou: Number(args[tiouIndex + 1]),
+    bootstrapReplicates: bootstrapIndex >= 0 ? Number(args[bootstrapIndex + 1]) : 1000,
+    seed: seedIndex >= 0 ? Number(args[seedIndex + 1]) : 1
+  };
 }
