@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateEventDataset } from '../scripts/event-evaluator.mjs';
+import { evaluateEventDataset, runEventEvaluator } from '../scripts/event-evaluator.mjs';
 
 const dataset = (annotations, predictions, reviewedIntervals = [[0, 10]]) => ({ schemaVersion: 1, clips: [{ id: 'clip-a', subjectGroup: 'person-a', split: 'test', durationSeconds: 10, reviewedIntervals, annotations: annotations.map(event => ({ ...event, label: 'error' })), predictions }] });
 const e = (start, end, type = 'trunk-motion') => ({ type, start, end });
@@ -54,4 +54,45 @@ test('invalid intervals and implicit split/threshold are rejected', () => {
   assert.throws(() => evaluateEventDataset(dataset([e(1, 2)], []), { tiou: .5 }), /split must be explicitly/);
   assert.throws(() => evaluateEventDataset(dataset([e(1, 2)], []), { split: 'test' }), /tiou must be explicitly/);
   assert.throws(() => evaluateEventDataset(dataset([e(1, 2)], [], [[2, 1]]), { split: 'test', tiou: .5 }), /outside the clip or empty/);
+});
+
+
+test('subject-cluster bootstrap reports deterministic 95% intervals', () => {
+  const d = { schemaVersion: 1, clips: [
+    { id: 'clip-a', subjectGroup: 'person-a', split: 'test', durationSeconds: 10, reviewedIntervals: [[0, 10]], annotations: [{ ...e(1, 2), label: 'error' }], predictions: [e(1, 2)] },
+    { id: 'clip-b', subjectGroup: 'person-b', split: 'test', durationSeconds: 10, reviewedIntervals: [[0, 10]], annotations: [{ ...e(3, 4), label: 'error' }], predictions: [] },
+    { id: 'clip-c', subjectGroup: 'person-c', split: 'test', durationSeconds: 10, reviewedIntervals: [[0, 10]], annotations: [], predictions: [e(5, 6)] }
+  ] };
+  const options = { split: 'test', tiou: .5, bootstrapReplicates: 250, seed: 41 };
+  const first = evaluateEventDataset(d, options).confidenceIntervals95;
+  const second = evaluateEventDataset(d, options).confidenceIntervals95;
+  assert.deepEqual(first, second);
+  assert.equal(first.method, 'subject-cluster percentile bootstrap');
+  assert.equal(first.subjectGroups, 3);
+  assert.equal(first.requestedReplicates, 250);
+  assert.ok(first.intervals95.precision.low <= first.intervals95.precision.high);
+  assert.ok(first.intervals95.recall.low <= first.intervals95.recall.high);
+  assert.ok(first.intervals95.falseAlertsPerReviewedMinute.low <= first.intervals95.falseAlertsPerReviewedMinute.high);
+});
+
+test('confidence intervals are withheld for a single subject group', () => {
+  const result = evaluateEventDataset(dataset([e(1, 2)], [e(1, 2)]), { split: 'test', tiou: .5 });
+  assert.equal(result.confidenceIntervals95.subjectGroups, 1);
+  assert.equal(result.confidenceIntervals95.intervals95, null);
+  assert.match(result.confidenceIntervals95.reason, /two independent subject groups/);
+});
+
+test('bootstrap can be explicitly disabled and rejects an unsafe replicate count', () => {
+  assert.equal(evaluateEventDataset(dataset([], []), { split: 'test', tiou: .5, bootstrapReplicates: 0 }).confidenceIntervals95, null);
+  assert.throws(() => evaluateEventDataset(dataset([], []), { split: 'test', tiou: .5, bootstrapReplicates: 50001 }), /bootstrapReplicates/);
+});
+
+
+test('CLI keeps the dataset path when optional bootstrap flags are omitted', () => {
+  assert.deepEqual(runEventEvaluator(['./data.json', '--split', 'test', '--tiou', '0.5']), {
+    path: './data.json', split: 'test', tiou: .5, bootstrapReplicates: 1000, seed: 1
+  });
+  assert.deepEqual(runEventEvaluator(['./data.json', '--split', 'test', '--tiou', '0.5', '--bootstrap', '200', '--seed', '9']), {
+    path: './data.json', split: 'test', tiou: .5, bootstrapReplicates: 200, seed: 9
+  });
 });
