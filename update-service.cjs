@@ -8,7 +8,9 @@ function parseRelease(data,current){
  const expected=`${RELEASES}/download/v${latest}/FormLens-${latest}-arm64.dmg`;
  const asset=Array.isArray(data.assets)?data.assets.find(a=>a.name===`FormLens-${latest}-arm64.dmg`&&a.browser_download_url===expected&&a.state==='uploaded'&&Number.isSafeInteger(a.size)&&a.size>0):null;
  if(newer(latest,current)&&!asset)throw Error('Новая версия ещё не готова к загрузке. Повторите проверку позже.');
- return {status:newer(latest,current)?'available':'current',current,latest,download:asset?expected:null,release:`${RELEASES}/tag/v${latest}`,message:newer(latest,current)?`Доступна FormLens ${latest}`:'У вас актуальная версия'};
+ const assetNamed=(name)=>Array.isArray(data.assets)&&data.assets.find(a=>a.name===name&&a.browser_download_url===`${RELEASES}/download/v${latest}/${name}`&&a.state==='uploaded'&&Number.isSafeInteger(a.size)&&a.size>0);
+ const zip=assetNamed(`FormLens-${latest}-arm64.zip`),feed=assetNamed(`FormLens-${latest}-arm64-appcast.xml`);
+ return {nativeFeed:zip&&feed?feed.browser_download_url:null,status:newer(latest,current)?'available':'current',current,latest,download:asset?expected:null,release:`${RELEASES}/tag/v${latest}`,message:newer(latest,current)?`Доступна FormLens ${latest}`:'У вас актуальная версия'};
 }
 function createUpdateService(current,{fetcher=fetch,now=Date.now}={}){
  let state={status:'idle',current,message:'Проверить новую версию'},pending,last=0;
@@ -26,3 +28,4 @@ function createUpdateService(current,{fetcher=fetch,now=Date.now}={}){
  return {check,getState:()=>({...state}),downloadURL:()=>state.status==='available'?state.download:null};
 }
 module.exports={createUpdateService,parseRelease,newer,REPOSITORY};
+

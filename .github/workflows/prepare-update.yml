@@ -1,0 +1,52 @@
+name: Prepare production update archive
+on:
+  push:
+    branches: ['feat/native-macos-updates']
+    paths: ['config/update-request.json', '.github/workflows/prepare-update.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prepare:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate request
+        run: |
+          node - <<'JS'
+          const fs=require('fs'),r=require('./config/update-request.json');
+          if(!/^\d+\.\d+\.\d+$/.test(r.version)||!Number.isSafeInteger(r.sourceRun)||r.sourceRun<=0)throw Error('Invalid request');
+          if(r.version!==require('./package.json').version)throw Error('Version mismatch');
+          fs.appendFileSync(process.env.GITHUB_ENV,`VERSION=${r.version}\nSOURCE_RUN=${r.sourceRun}\n`);
+          JS
+      - name: Retrieve verified initial installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --name "FormLens-$VERSION-arm64-installer" --dir input
+      - name: Extract production application and create update ZIP
+        run: |
+          cd input
+          shasum -a 256 -c SHA256SUMS.txt
+          cd ..
+          mkdir -p "$RUNNER_TEMP/formlens-volume" output
+          hdiutil attach "input/FormLens-$VERSION-arm64.dmg" -readonly -nobrowse -mountpoint "$RUNNER_TEMP/formlens-volume"
+          ditto "$RUNNER_TEMP/formlens-volume/FormLens.app" "$RUNNER_TEMP/FormLens.app"
+          hdiutil detach "$RUNNER_TEMP/formlens-volume"
+          codesign --verify --deep --strict "$RUNNER_TEMP/FormLens.app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$RUNNER_TEMP/FormLens.app/Contents/Info.plist")" = "$VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$RUNNER_TEMP/FormLens.app/Contents/Info.plist")" = "$(cat config/update-public-key.txt)"
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/FormLens.app" "output/FormLens-$VERSION-arm64.zip"
+          cp "input/FormLens-$VERSION-arm64.dmg" output/
+          cd output
+          shasum -a 256 FormLens-* > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FormLens-production-update
+          path: output/
+          retention-days: 30
+          if-no-files-found: error
